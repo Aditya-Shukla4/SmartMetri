@@ -1,0 +1,15 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const certificateController_1 = require("../controllers/certificateController");
+const auth_1 = require("../middlewares/auth");
+const validate_1 = require("../middlewares/validate");
+const schemas_1 = require("../validation/schemas");
+const router = (0, express_1.Router)();
+router.get('/', auth_1.verifyToken, (0, auth_1.requireRole)(['BUSINESS', 'ADMIN', 'LMO']), certificateController_1.listCertificates);
+router.get('/:id', auth_1.verifyToken, (0, auth_1.requireRole)(['BUSINESS', 'ADMIN', 'LMO']), certificateController_1.getCertificate);
+router.post('/:id/issue', auth_1.verifyToken, (0, auth_1.requireRole)(['ADMIN']), (0, validate_1.validateBody)(schemas_1.certificateIssueSchema), certificateController_1.issueCertificate);
+router.patch('/:id/revoke', auth_1.verifyToken, (0, auth_1.requireRole)(['ADMIN']), certificateController_1.revokeCertificate);
+router.get('/:id/pdf', auth_1.verifyToken, (0, auth_1.requireRole)(['BUSINESS', 'ADMIN', 'LMO']), certificateController_1.downloadCertificatePdf);
+router.get('/:id/qr', auth_1.verifyToken, (0, auth_1.requireRole)(['BUSINESS', 'ADMIN', 'LMO']), certificateController_1.getCertificateQr);
+exports.default = router;

@@ -1,0 +1,306 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ------------------------------------------------------
+// 1. STAKEHOLDERS & RBAC
+// ------------------------------------------------------
+enum Role {
+  ADMIN
+  LMO
+  BUSINESS
+  GATC
+}
+
+model User {
+  id             String         @id @default(uuid())
+  role           Role
+  name           String
+  email          String         @unique
+  phone          String?
+  passwordHash   String
+  stateId        String?
+  districtId     String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  instruments    Instrument[]
+  applications   Application[]
+  assignments    Assignment[]
+  inspections    Inspection[]
+  auditLogs      AuditLog[]
+  notifications  Notification[]
+  statusChanges  ApplicationStatusHistory[]
+}
+
+// ------------------------------------------------------
+// 2. INSTRUMENT REGISTRY
+// ------------------------------------------------------
+enum InstrumentStatus {
+  UNVERIFIED
+  VERIFICATION_PENDING
+  VERIFIED
+  REJECTED
+  EXPIRED
+}
+
+model Instrument {
+  id               String           @id @default(uuid())
+  instrumentCode   String           @unique
+  type             String
+  manufacturer     String
+  model            String
+  serialNumber     String           @unique
+  capacity         String
+  unit             String?
+  state            String
+  district         String
+  location         String
+  previousVerificationDate DateTime?
+  nextDueDate      DateTime?
+  status           InstrumentStatus @default(UNVERIFIED)
+  businessId       String
+  business         User             @relation(fields: [businessId], references: [id])
+  
+  applications     Application[]
+  certificates     Certificate[]
+
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+}
+
+// ------------------------------------------------------
+// 3. APPLICATION & SCHEDULING
+// ------------------------------------------------------
+enum ApplicationStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  ASSIGNED
+  SCHEDULED
+  INSPECTION_IN_PROGRESS
+  REINSPECTION_REQUIRED
+  PASSED
+  FAILED
+  CERTIFICATE_ISSUED
+}
+
+model Application {
+  id               String            @id @default(uuid())
+  applicationCode  String            @unique
+  status           ApplicationStatus @default(SUBMITTED)
+  applicationType  String            @default("VERIFICATION")
+  remarks          String?
+  dueDate          DateTime?
+
+  instrumentId     String
+  instrument       Instrument        @relation(fields: [instrumentId], references: [id])
+  
+  businessId       String
+  business         User              @relation(fields: [businessId], references: [id])
+  
+  assignments      Assignment[]
+  inspections      Inspection[]
+  statusHistory    ApplicationStatusHistory[]
+  
+  evidenceUrls     String[]          
+
+  certificate      Certificate?
+
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+}
+
+model Assignment {
+  id               String       @id @default(uuid())
+  scheduledDate    DateTime
+  
+  applicationId    String
+  application      Application  @relation(fields: [applicationId], references: [id])
+  
+  lmoId            String
+  lmo              User         @relation(fields: [lmoId], references: [id])
+
+  geoLat           Float?       
+  geoLng           Float?       
+  fieldPhotos      String[]     
+
+  createdAt        DateTime     @default(now())
+
+  @@index([applicationId])
+  @@index([lmoId, scheduledDate])
+  @@unique([applicationId, lmoId, scheduledDate])
+}
+
+model ApplicationStatusHistory {
+  id            String            @id @default(uuid())
+  applicationId String
+  application   Application       @relation(fields: [applicationId], references: [id])
+  fromStatus    ApplicationStatus?
+  toStatus      ApplicationStatus
+  changedById   String?
+  changedBy     User?             @relation(fields: [changedById], references: [id])
+  metadata      Json?
+  createdAt     DateTime          @default(now())
+
+  @@index([applicationId, createdAt])
+  @@index([toStatus, createdAt])
+}
+
+// ------------------------------------------------------
+// 4. OFFLINE FIELD VERIFICATION & EVIDENCE
+// ------------------------------------------------------
+enum InspectionResult {
+  PASS
+  FAIL
+}
+
+model Inspection {
+  id               String           @id @default(uuid())
+  clientSyncId     String           @unique 
+  result           InspectionResult
+  remarks          String?
+  failureReason    String?
+  
+  latitude         Float
+  longitude        Float
+  startedAt        DateTime
+  completedAt      DateTime
+  
+  applicationId    String
+  application      Application      @relation(fields: [applicationId], references: [id])
+  
+  lmoId            String
+  lmo              User             @relation(fields: [lmoId], references: [id])
+
+  evidence         Evidence[]
+  checklistResults InspectionChecklistResult[]
+  certificate      Certificate?
+
+  createdAt        DateTime         @default(now())
+}
+
+model Evidence {
+  id               String       @id @default(uuid())
+  evidenceType     String       
+  fileUrl          String
+  fileHash         String       
+  latitude         Float
+  longitude        Float
+  capturedAt       DateTime
+
+  inspectionId     String
+  inspection       Inspection   @relation(fields: [inspectionId], references: [id])
+
+  createdAt        DateTime     @default(now())
+}
+
+model ChecklistTemplate {
+  id             String          @id @default(uuid())
+  name           String
+  instrumentType String?
+  active         Boolean         @default(true)
+  items          ChecklistItem[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+}
+
+model ChecklistItem {
+  id                String                         @id @default(uuid())
+  templateId        String
+  label             String
+  expectedCondition String?
+  required          Boolean                        @default(true)
+  template          ChecklistTemplate              @relation(fields: [templateId], references: [id])
+  results           InspectionChecklistResult[]
+  createdAt         DateTime                       @default(now())
+}
+
+model InspectionChecklistResult {
+  id              String        @id @default(uuid())
+  inspectionId    String
+  checklistItemId String
+  observedValue   String?
+  passed          Boolean
+  remarks         String?
+  inspection      Inspection    @relation(fields: [inspectionId], references: [id])
+  checklistItem   ChecklistItem @relation(fields: [checklistItemId], references: [id])
+  createdAt       DateTime      @default(now())
+
+  @@unique([inspectionId, checklistItemId])
+  @@index([checklistItemId])
+}
+
+// ------------------------------------------------------
+// 5. DIGITAL CERTIFICATES & QR
+// ------------------------------------------------------
+enum CertificateStatus {
+  VALID
+  EXPIRING_SOON
+  EXPIRED
+  REVOKED
+}
+
+model Certificate {
+  id               String            @id @default(uuid())
+  certificateCode  String            @unique
+  status           CertificateStatus @default(VALID)
+  
+  issueDate        DateTime          @default(now())
+  validUntil       DateTime
+  
+  qrSignature      String            
+  
+  instrumentId     String
+  instrument       Instrument        @relation(fields: [instrumentId], references: [id])
+  
+  inspectionId     String            @unique
+  inspection       Inspection        @relation(fields: [inspectionId], references: [id])
+
+  applicationId    String            @unique
+  application      Application       @relation(fields: [applicationId], references: [id])
+
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+}
+
+// ------------------------------------------------------
+// 6. AUDIT TRAIL
+// ------------------------------------------------------
+model AuditLog {
+  id               String   @id @default(uuid())
+  action           String   
+  entityType       String   
+  entityId         String
+  oldValue         Json?    
+  newValue         Json?
+  
+  userId           String
+  user             User     @relation(fields: [userId], references: [id])
+  
+  ipAddress        String?
+  createdAt        DateTime @default(now())
+}
+
+model Notification {
+  id        String    @id @default(uuid())
+  userId    String
+  type      String
+  title     String
+  message   String
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id])
+
+  @@index([userId, readAt])
+  @@index([createdAt])
+}

@@ -1,0 +1,11 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const checklistController_1 = require("../controllers/checklistController");
+const auth_1 = require("../middlewares/auth");
+const validate_1 = require("../middlewares/validate");
+const schemas_1 = require("../validation/schemas");
+const router = (0, express_1.Router)();
+router.get('/', auth_1.verifyToken, (0, auth_1.requireRole)(['LMO', 'ADMIN']), checklistController_1.listChecklists);
+router.post('/', auth_1.verifyToken, (0, auth_1.requireRole)(['ADMIN']), (0, validate_1.validateBody)(schemas_1.checklistSchema), checklistController_1.createChecklist);
+exports.default = router;

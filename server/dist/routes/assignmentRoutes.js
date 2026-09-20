@@ -1,0 +1,13 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const assignmentController_1 = require("../controllers/assignmentController");
+const auth_1 = require("../middlewares/auth");
+const validate_1 = require("../middlewares/validate");
+const schemas_1 = require("../validation/schemas");
+const router = (0, express_1.Router)();
+router.post('/assign', auth_1.verifyToken, (0, auth_1.requireRole)(['ADMIN']), (0, validate_1.validateBody)(schemas_1.assignmentSchema), assignmentController_1.assignApplication);
+router.get('/lmos', auth_1.verifyToken, (0, auth_1.requireRole)(['ADMIN']), assignmentController_1.listLMOs);
+router.patch('/:id', auth_1.verifyToken, (0, auth_1.requireRole)(['ADMIN']), (0, validate_1.validateBody)(schemas_1.assignmentUpdateSchema), assignmentController_1.updateAssignment);
+router.get('/', auth_1.verifyToken, (0, auth_1.requireRole)(['ADMIN', 'LMO']), assignmentController_1.listAssignments);
+exports.default = router;

@@ -1,0 +1,37 @@
+{
+  "cli": {
+    "version": ">= 24.3.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "android": {
+        "image": "sdk-51"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk",
+        "image": "sdk-51"
+      },
+      "env": {
+        "GRADLE_OPTS": "-Djava.net.preferIPv4Stack=true"
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "android": {
+        "image": "sdk-51"
+      },
+      "env": {
+        "GRADLE_OPTS": "-Djava.net.preferIPv4Stack=true"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

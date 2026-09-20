@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "smartmetri-mobile",
+    "slug": "smartmetri-mobile",
+    "version": "1.0.0",
+    "android": {
+      "package": "com.aditya667.smartmetrimobile"
+    },
+    "plugins": [
+      "expo-camera",
+      "expo-location",
+      "expo-file-system",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#ffffff"
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "7f2b1291-b1ff-4276-80e1-aa43b6c58bc1"
+      }
+    }
+  }
+}
