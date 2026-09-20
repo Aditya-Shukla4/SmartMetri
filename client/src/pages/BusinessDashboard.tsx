@@ -656,9 +656,9 @@ export default function BusinessDashboard() {
                           {app.status}
                         </span>
                       </div>
-                      {app.statusHistory?.length > 0 && (
+                      {(app.statusHistory || []).length > 0 && (
                         <div className="mt-3 pt-3 border-t border-slate-100 flex flex-wrap gap-2">
-                          {app.statusHistory.map((history) => (
+                          {(app.statusHistory || []).map((history) => (
                             <span
                               key={history.id}
                               className="text-[11px] font-medium bg-white border border-slate-200 px-2 py-1 rounded text-slate-600"
