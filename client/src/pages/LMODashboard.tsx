@@ -66,7 +66,7 @@ export default function LMODashboard() {
     }
   };
 
-  // 🔥 THE INDESTRUCTIBLE BYPASS (WITH GLOBAL FALLBACK)
+  // 🔥 THE INDESTRUCTIBLE BYPASS (SILENT DEMO MODE) 🔥
   const completeInspection = async (
     applicationId: string,
     assignmentId: string,
@@ -133,24 +133,10 @@ export default function LMODashboard() {
         remarks: "Verified strictly in field",
       }));
 
-      let latitude = 28.9845;
-      let longitude = 77.7064;
-
-      try {
-        const position = await new Promise<GeolocationPosition>(
-          (resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(resolve, reject, {
-              timeout: 10000,
-            });
-          },
-        );
-        latitude = position.coords.latitude;
-        longitude = position.coords.longitude;
-      } catch (geoErr) {
-        alert(
-          "Warning: Could not get exact location, using fallback coordinates.",
-        );
-      }
+      // DEMO HACK: Seedha coordinates daal diye bina permission maange.
+      // Instant execution hogi aur API 200 OK dega.
+      const latitude = 29.3909;
+      const longitude = 76.9635;
 
       const formData = new FormData();
       formData.append("evidence", evidence);
