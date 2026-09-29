@@ -20,8 +20,11 @@ export default function LMODashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const [remarks, setRemarks] = useState("");
-  const [evidence, setEvidence] = useState<File | null>(null);
+  // FIX: Har card ke liye alag state maintain karne ke liye Object use kiya
+  const [remarksMap, setRemarksMap] = useState<Record<string, string>>({});
+  const [evidenceMap, setEvidenceMap] = useState<Record<string, File | null>>(
+    {},
+  );
   const [submitting, setSubmitting] = useState(false);
 
   const getErrorMsg = (err: any, fallback: string) => {
@@ -73,7 +76,11 @@ export default function LMODashboard() {
     instrumentType: string,
     result: "PASS" | "FAIL",
   ) => {
-    if (!evidence) {
+    // FIX: Current assignment ka hi data uthao
+    const currentEvidence = evidenceMap[assignmentId];
+    const currentRemarks = remarksMap[assignmentId] || "";
+
+    if (!currentEvidence) {
       alert("Evidence photo is required before submission.");
       return;
     }
@@ -134,12 +141,11 @@ export default function LMODashboard() {
       }));
 
       // DEMO HACK: Seedha coordinates daal diye bina permission maange.
-      // Instant execution hogi aur API 200 OK dega.
       const latitude = 29.3909;
       const longitude = 76.9635;
 
       const formData = new FormData();
-      formData.append("evidence", evidence);
+      formData.append("evidence", currentEvidence);
 
       const payloadData = {
         applicationId,
@@ -147,7 +153,7 @@ export default function LMODashboard() {
         clientSyncId: crypto.randomUUID(),
         result,
         remarks:
-          remarks ||
+          currentRemarks ||
           (result === "PASS"
             ? "Instrument verified successfully."
             : "Instrument failed verification."),
@@ -166,15 +172,23 @@ export default function LMODashboard() {
 
       formData.append("payload", JSON.stringify(payloadData));
 
-      const res = await apiClient.post("/inspections/sync", formData);
+      // FIX: Hardcoded Multipart Headers taaki backend JSON parse karne ka kachra na kare
+      const res = await apiClient.post("/inspections/sync", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
 
       if (res.status !== 200 && res.status !== 201 && res.status !== 204) {
         throw new Error(JSON.stringify(res.data));
       }
 
       alert(`✅ Inspection marked as ${result} successfully.`);
-      setRemarks("");
-      setEvidence(null);
+
+      // Cleanup field data after success
+      setRemarksMap((prev) => ({ ...prev, [assignmentId]: "" }));
+      setEvidenceMap((prev) => ({ ...prev, [assignmentId]: null }));
+
       await refresh();
     } catch (err: any) {
       alert(`[API ERROR] ${err.message}`);
@@ -337,8 +351,13 @@ export default function LMODashboard() {
                           <textarea
                             className="w-full border border-slate-300 rounded-lg p-3 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                             rows={3}
-                            value={remarks}
-                            onChange={(e) => setRemarks(e.target.value)}
+                            value={remarksMap[item.id] || ""}
+                            onChange={(e) =>
+                              setRemarksMap((prev) => ({
+                                ...prev,
+                                [item.id]: e.target.value,
+                              }))
+                            }
                             placeholder="e.g. Weights are properly calibrated within permissible limits."
                           />
                         </div>
@@ -351,7 +370,10 @@ export default function LMODashboard() {
                             type="file"
                             accept="image/*,.pdf"
                             onChange={(e) =>
-                              setEvidence(e.target.files?.[0] || null)
+                              setEvidenceMap((prev) => ({
+                                ...prev,
+                                [item.id]: e.target.files?.[0] || null,
+                              }))
                             }
                             className="w-full text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 border border-slate-300 rounded-lg bg-white"
                           />
